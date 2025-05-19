@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     StyleSheet
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 // --- Cart Context ---
 const CartContext = createContext();
@@ -184,12 +185,24 @@ function DetailsScreen({ route, navigation }) {
 // --- Cart Screen ---
 function CartScreen() {
     const { cart, clearCart } = useCart();
+    const navigation          = useNavigation();
     const subtotal = cart.reduce((sum, p) => sum + p.price, 0);
     const tax = subtotal * 0.13;
     const total = subtotal + tax;
 
     return (
         <ScrollView contentContainerStyle={styles.center}>
+            {/* Home icon button */}
+            <TouchableOpacity
+                style={styles.homeIconButton}
+                onPress={() => navigation.navigate('Sport Shop')}
+            >
+                <Image
+                    source={require('./assets/images/react-logo.png')}
+                    style={styles.homeIcon}
+                />
+                <Text style={styles.homeIconLabel}>Home</Text>
+            </TouchableOpacity>
             <Text style={styles.title}>Your Cart</Text>
             {cart.length === 0 ? (
                 <Text>No items added yet.</Text>
@@ -317,5 +330,21 @@ const styles = StyleSheet.create({
         fontSize: 18,
         marginVertical: 12,
         fontWeight: '700'
-    }
+    },
+    homeIconButton: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        zIndex: 10
+    },
+    homeIcon: {
+        width: 24,
+        height: 24
+    },
+    homeIconLabel: {
+        marginTop: 4,
+        fontSize: 12,
+        color: '#333',
+        textAlign: 'center'
+    },
 });
