@@ -11,9 +11,7 @@ import {
     StyleSheet,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     Alert
-
 } from 'react-native';
 
 export default function App() {
@@ -75,12 +73,12 @@ export default function App() {
     const [editMessageId, setEditMessageId] = useState(null);
     const [newDirName, setNewDirName] = useState('');
 
-    // Helpers
     const selectedDir = directories.find(d => d.id === selectedDirId);
 
     // Add or update a message
     const handleSend = () => {
-        if (!newMessageText.trim()) return;
+        const text = newMessageText.trim();
+        if (!text || !selectedDir) return;
         setDirectories(directories.map(dir => {
             if (dir.id !== selectedDirId) return dir;
             if (editMessageId) {
@@ -88,7 +86,7 @@ export default function App() {
                 return {
                     ...dir,
                     messages: dir.messages.map(m =>
-                        m.id === editMessageId ? { ...m, text: newMessageText.trim() } : m
+                        m.id === editMessageId ? { ...m, text } : m
                     )
                 };
             } else {
@@ -96,7 +94,7 @@ export default function App() {
                 const nextId = `m${dir.messages.length + 1}`;
                 return {
                     ...dir,
-                    messages: [...dir.messages, { id: nextId, text: newMessageText.trim() }]
+                    messages: [...dir.messages, { id: nextId, text }]
                 };
             }
         }));
@@ -106,13 +104,20 @@ export default function App() {
 
     // Delete a message
     const handleDeleteMessage = (msgId) => {
-        setDirectories(directories.map(dir => {
-            if (dir.id !== selectedDirId) return dir;
-            return {
-                ...dir,
-                messages: dir.messages.filter(m => m.id !== msgId)
-            };
-        }));
+        Alert.alert('Delete Message', 'Are you sure?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete', style: 'destructive', onPress: () => {
+                    setDirectories(directories.map(dir => {
+                        if (dir.id !== selectedDirId) return dir;
+                        return {
+                            ...dir,
+                            messages: dir.messages.filter(m => m.id !== msgId)
+                        };
+                    }));
+                }
+            }
+        ]);
     };
 
     // Start editing a message
@@ -130,16 +135,14 @@ export default function App() {
         setNewDirName('');
     };
 
-    // Back from messages to directory list
+    // Back to directory list
     const handleBack = () => {
         setSelectedDirId(null);
         setNewMessageText('');
         setEditMessageId(null);
     };
 
-    // --- Render ---
-
-    // 1) Directory list view
+    // Render directory list if none selected
     if (!selectedDir) {
         return (
             <SafeAreaView style={styles.container}>
@@ -169,32 +172,37 @@ export default function App() {
         );
     }
 
-    // 2) Messages view
+    // Render messages view for selected directory
     return (
         <SafeAreaView style={styles.container}>
+            {/* Header */}
             <Text style={styles.header}>{selectedDir.name}</Text>
 
-            <FlatList
-                data={selectedDir.messages}
-                keyExtractor={m => m.id}
-                contentContainerStyle={styles.messagesList}
-                renderItem={({ item }) => (
-                    <View style={styles.messageRow}>
-                        <View style={styles.messageBubble}>
-                            <Text style={styles.messageText}>{item.text}</Text>
+            {/* Messages list */}
+            <View style={styles.messagesContainer}>
+                <FlatList
+                    data={selectedDir.messages}
+                    keyExtractor={m => m.id}
+                    contentContainerStyle={styles.messagesList}
+                    renderItem={({ item }) => (
+                        <View style={styles.messageRow}>
+                            <View style={styles.messageBubble}>
+                                <Text style={styles.messageText}>{item.text}</Text>
+                            </View>
+                            <View style={styles.msgActions}>
+                                <TouchableOpacity onPress={() => handleEditMessage(item)}>
+                                    <Text style={styles.actionText}>Edit</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDeleteMessage(item.id)}>
+                                    <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                        <View style={styles.msgActions}>
-                            <TouchableOpacity onPress={() => handleEditMessage(item)}>
-                                <Text style={styles.actionText}>Edit</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleDeleteMessage(item.id)}>
-                                <Text style={[styles.actionText, { color: 'red' }]}>Delete</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-            />
+                    )}
+                />
+            </View>
 
+            {/* Input and Send/Update */}
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={60}
@@ -206,36 +214,99 @@ export default function App() {
                         value={newMessageText}
                         onChangeText={setNewMessageText}
                     />
-                    <Button title={editMessageId ? "Update" : "Send"} onPress={handleSend} />
+                    <Button
+                        title={editMessageId ? "Update" : "Send"}
+                        onPress={handleSend}
+                    />
                 </View>
             </KeyboardAvoidingView>
 
-            <Button title="Back to Directories" onPress={handleBack} />
+            {/* Back button */}
+            <View style={styles.backButtonWrapper}>
+                <Button title="Back to Directories" onPress={handleBack} />
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16, backgroundColor: '#fff' },
-    header: { fontSize: 24, fontWeight: '600', marginBottom: 12, textAlign: 'center' },
-    newDirContainer: { flexDirection: 'row', marginBottom: 12 },
+    container: {
+        flex: 1,
+        padding: 16,
+        backgroundColor: '#fff'
+    },
+    header: {
+        fontSize: 24,
+        fontWeight: '600',
+        marginBottom: 12,
+        textAlign: 'center'
+    },
+    newDirContainer: {
+        flexDirection: 'row',
+        marginBottom: 12
+    },
     newDirInput: {
-        flex: 1, borderColor: '#ccc', borderWidth: 1, borderRadius: 6,
-        paddingHorizontal: 12, marginRight: 8
+        flex: 1,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingHorizontal: 12,
+        marginRight: 8
     },
-    dirButton: { padding: 16, backgroundColor: '#e0e0e0', borderRadius: 6, marginBottom: 8 },
-    dirText: { fontSize: 18, textAlign: 'center' },
-    messagesList: { paddingVertical: 8 },
-    messageRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    dirButton: {
+        padding: 16,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 6,
+        marginBottom: 8
+    },
+    dirText: {
+        fontSize: 18,
+        textAlign: 'center'
+    },
+    messagesContainer: {
+        flex: 0.6,
+        marginBottom: 8
+    },
+    messagesList: {
+        paddingVertical: 8
+    },
+    messageRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8
+    },
     messageBubble: {
-        flex: 1, backgroundColor: '#f1f1f1', padding: 12, borderRadius: 6
+        flex: 1,
+        backgroundColor: '#f1f1f1',
+        padding: 12,
+        borderRadius: 6
     },
-    messageText: { fontSize: 16 },
-    msgActions: { flexDirection: 'row', marginLeft: 8 },
-    actionText: { marginHorizontal: 4, color: '#007AFF' },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
+    messageText: {
+        fontSize: 16
+    },
+    msgActions: {
+        flexDirection: 'row',
+        marginLeft: 8
+    },
+    actionText: {
+        marginHorizontal: 4,
+        color: '#007AFF'
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4
+    },
     input: {
-        flex: 1, borderColor: '#ccc', borderWidth: 1, borderRadius: 6,
-        paddingHorizontal: 12, paddingVertical: 8, marginRight: 8
+        flex: 1,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginRight: 8
+    },
+    backButtonWrapper: {
+        marginBottom: 16
     }
 });
